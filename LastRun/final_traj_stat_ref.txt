@@ -1,4 +1,0 @@
-***** Statistiques de l'erreur de poursuite *****
-Moyenne : 2.6420714388979514 mm
-Moyenne de l'intégrale : 2.6433771365294114 mm
-Maximum : 69.79 mm
