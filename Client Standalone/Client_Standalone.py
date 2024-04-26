@@ -9,7 +9,9 @@ import datetime, threading, time
 import serial
 import Util
 from scipy import integrate
+import customtkinter
 import sys
+import time
 
 
 TrajIndex = 0
@@ -19,11 +21,44 @@ TrajData = pd.Series()
 
 stop_event = threading.Event()
 
-arduino = serial.Serial(port='COM7', baudrate=115200, timeout=.1)
-readingBuffer = []
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
+customtkinter.set_appearance_mode("dark")  # Modes: system (default), light, dark
+customtkinter.set_default_color_theme("blue")  # Themes: blue (default), dark-blue, green
+
+app = customtkinter.CTk()  # create CTk window like you do with the Tk window
+app.geometry("400x400")
+
+
+def combobox_Auto_callback(choice):
+    print("combobox dropdown clicked:", choice)
+    combobox_Auto.set(choice)
+
+combobox_Auto = customtkinter.CTkComboBox(app, values=Util.serial_ports(),
+                                         command=combobox_Auto_callback)
+combobox_Auto.place(relx=0.5, rely=0.3, anchor=customtkinter.CENTER)
+label_Auto = customtkinter.CTkLabel(app, text="Choix port COM Auto", fg_color="transparent")
+label_Auto.place(relx=0.5, rely=0.2, anchor=customtkinter.CENTER)
+
+
+def bpStart_function():
+    print("Start pressed")
+    bpStart.configure(state="disabled")
+    MainAppStart()
+    bpStart.configure(state="normal")
+
+
+
+# Use CTkButton instead of tkinter Button
+bpStart = customtkinter.CTkButton(master=app, text="Start", command=bpStart_function)
+bpStart.place(relx=0.5, rely=0.8, anchor=customtkinter.CENTER)
+
+def MainAppStart():
+    ##time.sleep(5)
+
+    arduino_Auto = serial.Serial(port=combobox_Auto.get(), baudrate=115200, timeout=.1)
+    #arduino_Man = serial.Serial(port=combobox_Manu.get(), baudrate=115200, timeout=.1)
+    readingBuffer = []
+
     print('Chargement de la trajectoire')
     TrajData = Util.LoadDataFile('Trajectoire_TheTube.csv')
     TrajData.plot()
@@ -31,12 +66,14 @@ if __name__ == '__main__':
     plt.show()
 
     print('Création du Thread de lecture des données de l\'arduino')
-    ReadThread = threading.Thread(target=Util.readToBuffer, args=(arduino, readingBuffer), daemon=True)
+    ReadThread = threading.Thread(target=Util.readToBuffer, args=(arduino_Auto, readingBuffer), daemon=True)
     print('Création du Thread d\'écriture des informations de trajectoire')
-    writeThread = threading.Thread(target=Util.trajectory_generation, args=(arduino, TrajIndex, TrajLen, TrajData, stop_event), daemon=True)
+    writeThread = threading.Thread(target=Util.trajectory_generation,
+                                   args=(arduino_Auto, TrajIndex, TrajLen, TrajData, stop_event), daemon=True)
 
     print('Passage de l\'Arduino dans le mode du concours')
-    Util.write(arduino, 'contest')
+    Util.write(arduino_Auto, 'contest')
+    #Util.write(arduino_Man, 'start')
     time.sleep(10)
 
     print('Démarrage des threads')
@@ -44,29 +81,21 @@ if __name__ == '__main__':
     writeThread.start()
 
     print('Concours en cours...')
-    time.sleep(2*60) #TODO: Start/stop from server?
+    time.sleep(2 * 60)  # TODO: Start/stop from server?
 
     print('Trajectoire terminée, arrêt du thread d\'écriture et passage de l\'Arduino en mode "Quiet"')
     stop_event.set()
     writeThread.join()
-    Util.write(arduino, 'contest') #Permet de forcer la consigne de départ à 0
+    Util.write(arduino_Auto, 'contest')  # Permet de forcer la consigne de départ à 0
     time.sleep(2)
-    Util.write(arduino, 'quiet')
+    Util.write(arduino_Auto, 'quiet')
+    #Util.write(arduino_Man, 'quiet')
 
-    print('Formattage du résultat final et calcul des statistiques')
+    print('Formattage du résultat final')
     df_final = Util.formatFinalBufferintoDataFrame(readingBuffer)
     df_final.plot()
     fig_final = plt.gcf()
     plt.show()
-
-    #Statistiques
-    df_final['following_err'] = np.abs(df_final.position-df_final.setpoint)
-    df_final['t_ms'] = df_final.index.values.astype(np.int64) // 10 ** 6
-    df_final.t_ms = df_final.t_ms.values.astype(np.int64) - np.int64(df_final.t_ms[0])
-
-    avg_int = integrate.trapz(df_final.following_err, x=df_final.t_ms.values) / np.int64(df_final.t_ms[-1])
-    max_foll_err = np.max(df_final.following_err)
-    avg_foll_err = np.mean(df_final.following_err)
 
     # Saving the different results into files
     rep_base = 'LastRun'
@@ -74,13 +103,15 @@ if __name__ == '__main__':
     df_final.to_csv(os.path.join(os.getcwd(), rep_base, 'final_traj.csv'))
     fig_final.savefig(os.path.join(os.getcwd(), rep_base, 'final_traj.png'))
 
-    stats =  '***** Statistiques de l\'erreur de poursuite *****\r\n' \
-            f'Moyenne : {avg_foll_err} mm\r\n' \
-            f'Moyenne de l\'intégrale : {avg_int} mm\r\n' \
-            f'Maximum : {max_foll_err} mm\r\n' \
 
-    with open(os.path.join(os.getcwd(), rep_base, 'final_traj_stat.txt'), 'w') as f:
-        f.write(stats)
+# Press the green button in the gutter to run the script.
+if __name__ == '__main__':
+
+    app.mainloop()
+
+    exit(0)
+
+
 
 
 
