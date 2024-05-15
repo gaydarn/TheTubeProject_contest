@@ -7,6 +7,8 @@ import serial
 import Util
 import sys
 import glob
+from socket import socket
+from asyncio.windows_events import NULL
 
 def serial_ports():
     """ Lists serial port names
@@ -35,6 +37,24 @@ def serial_ports():
         except (OSError, serial.SerialException):
             pass
     return result
+
+
+def listCSVFilesInFolder(folderPath):
+    """
+    Crée une liste des fichiers avec l'extension .csv dans le dossier spécifié.
+
+    Args:
+        dossier (str): Chemin du dossier à parcourir.
+
+    Returns:
+        list: Liste des chemins des fichiers avec l'extension .csv.
+    """
+    CSVFilesList = []
+    for file in os.listdir(folderPath):
+        if file.endswith(".csv"):
+            FilePath = os.path.join(folderPath, file)
+            CSVFilesList.append(FilePath)
+    return CSVFilesList
 
 def LoadDataFile(fileName):
     # Création du chemin du fichier des données joint
@@ -71,6 +91,8 @@ def trajectory_generation(arduino, _traj_index, _traj_len, _traj_data, _stop_eve
             _traj_index = _traj_index + 10 * _traj_period
         else:
             _traj_index = 0
+            break
+
         time_sleep = next_call - time.time()
         if time_sleep > 0 :
             time.sleep(time_sleep)
@@ -79,12 +101,26 @@ def trajectory_generation(arduino, _traj_index, _traj_len, _traj_data, _stop_eve
 
 
 def write(arduino,x):
+    print("ArduinoSend:"+x)
     arduino.write(bytes(x, 'utf-8'))
 
-
-def readToBuffer(arduino, readingBuffer):
-
+def ReadArduioToServer(arduino, socket: socket):
     while True:
+        if arduino.inWaiting() > 0:
+            try:
+                line = arduino.readline().strip()
+                print(line)
+                if (socket == NULL):
+                    raise ValueError('A very specific bad thing happened.')
+                socket.sendall(line)
+            except Exception as error:  # this deals will the error
+
+                print(error)
+                break
+
+def readToBuffer(arduino, readingBuffer, _stop_event):
+
+    while not _stop_event.is_set():
         if arduino.inWaiting() > 0:
             try:
                 line = arduino.readline().strip()

@@ -11,6 +11,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 import datetime, threading, time 
 import tkinter as tk
+from time import sleep
 
 TCP_IP = ''
 TCP_PORT = 8888
@@ -79,30 +80,34 @@ class Application(tk.Frame):
         global ExectueLoop
         if ExectueLoop ==True:
             if self.loop_type.get() == "1 boucle":
-                self.Etat_label.configure(text="Etat du cicle: Boucle unique en cours")
+                self.Etat_label.configure(text="Etat du cycle: Boucle unique en cours")
             else:
-               self.Etat_label.configure(text="Etat du cicle: Boucle infinit en cours")
+               self.Etat_label.configure(text="Etat du cycle: Boucle infinie en cours")
         else:
-            self.Etat_label.configure(text="Etat du cicle: Arreté")
+            self.Etat_label.configure(text="Etat du cycle: Arreté")
         self.after(100, self.update_Etat)
 
     def start_loop(self, event):
         global SingleLoop, ExectueLoop,dt_string,TrajIndex
+
         if TrajIndex == 0:
+            print("Passage des arduino en mode contest")
+            s._broadcast('contest')
+            sleep(2)
+            s._broadcast('START')
+
             if self.loop_type.get() == "1 boucle":
                 print("Démarrage de la boucle unique")
                 SingleLoop = True
                 ExectueLoop = True
                 today = datetime.datetime.now()
                 dt_string = today.strftime("%d-%m-%Y_%H-%M-%S")
-                # Mettez ici votre code pour la boucle unique
             else:
                 print("Démarrage de la boucle infinie")
                 SingleLoop = False
                 ExectueLoop = True
                 today = datetime.datetime.now()
                 dt_string = today.strftime("%d-%m-%Y_%H-%M-%S")
-                # Mettez ici votre code pour la boucle infinie
 
     def stop_loop(self, event):
         global SingleLoop, ExectueLoop
@@ -110,7 +115,6 @@ class Application(tk.Frame):
         SingleLoop = False
         ExectueLoop = False
         s._broadcast(f"traj={datetime.datetime.now().time()};0")
-        # Mettez ici le code pour arrêter votre boucle
 
 
 
@@ -129,7 +133,7 @@ def LoadDataFile(fileName):
     return series
 
 
-def trajectory_generation():
+def trajectory_generation_server():
     global TrajIndex
     global TrajLen
     global TrajData
@@ -140,13 +144,14 @@ def trajectory_generation():
         if(not (TrajIndex == TrajLen and SingleLoop) and ExectueLoop and clientCount>0):
             next_call = next_call + 0.1
             if len(s.CLIENTS) > 0 :
-                print(f"ENVOI = traj={datetime.datetime.now().time()};{TrajData.Setpoint[TrajIndex]}")
-                if TrajIndex == 0 :
+                #print(f"ENVOI = traj={datetime.datetime.now().time()};{TrajData.Setpoint[TrajIndex]}")
+                #print(f"ENVOI = traj={datetime.datetime.now().time()};{TrajData[TrajIndex]}")
+                #if TrajIndex == 0 :
                     #s._broadcast('contest')
-                    s._broadcast('START')
+                    #s._broadcast('START')
 
                 s._broadcast(f"traj={datetime.datetime.now().time()};{TrajData.Setpoint[TrajIndex]}")
-            
+                #s._broadcast(f"traj={datetime.datetime.now().time()};{TrajData[TrajIndex]}")
                 if TrajIndex < TrajLen:
                     TrajIndex = TrajIndex + 1
                 else:
@@ -164,11 +169,12 @@ def trajectory_generation():
             ExectueLoop = False
             next_call = time.time()
             TrajIndex = 0
-            #s._broadcast('quiet')
+            s._broadcast('quiet')
             print('Single loop finish')
         elif (ExectueLoop == False):
             TrajIndex = 0
             next_call = time.time()
+            #s._broadcast('quiet')
         else:
             ExectueLoop = False
             next_call = time.time()
@@ -293,11 +299,13 @@ root = tk.Tk()
 if __name__ == '__main__':
     s = server() #create new server listening for connections
     threading.Thread(target=s.startServer).start()
+    #Chargement de la trajectoire du concours
     TrajData = LoadDataFile('..\..\Trajectoire_TheTube.csv')
     TrajData.plot()
     TrajLen = TrajData.size-1
-    ##plt.show()
-    timerThread = threading.Thread(target=trajectory_generation)
+    plt.show()
+    #démarrage du thread de génération de trajectoire
+    timerThread = threading.Thread(target=trajectory_generation_server)
     timerThread.daemon = True
     timerThread.start()
     app = Application(master=root,my_var=clientCount)
