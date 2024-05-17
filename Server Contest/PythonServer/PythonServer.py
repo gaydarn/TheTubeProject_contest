@@ -170,6 +170,7 @@ def trajectory_generation_server():
             next_call = time.time()
             TrajIndex = 0
             s._broadcast('quiet')
+            s._broadcast('STOP')
             print('Single loop finish')
         elif (ExectueLoop == False):
             TrajIndex = 0

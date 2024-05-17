@@ -101,15 +101,15 @@ def trajectory_generation(arduino, _traj_index, _traj_len, _traj_data, _stop_eve
 
 
 def write(arduino,x):
-    print("ArduinoSend:"+x)
+    #print("ArduinoSend:"+x)
     arduino.write(bytes(x, 'utf-8'))
 
-def ReadArduioToServer(arduino, socket: socket):
-    while True:
+def ReadArduioToServer(arduino, socket: socket, _stop_event):
+    while not _stop_event.is_set():
         if arduino.inWaiting() > 0:
             try:
                 line = arduino.readline().strip()
-                print(line)
+                #print(line)
                 if (socket == NULL):
                     raise ValueError('A very specific bad thing happened.')
                 socket.sendall(line)
