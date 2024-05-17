@@ -246,7 +246,13 @@ class server():
         chemin_dossier = os.path.join(os.getcwd(), chemin)
         if not os.path.exists(chemin_dossier):     
             os.mkdir(chemin_dossier)
-      
+
+        f = open(f'{chemin}/{addr}_{dt_string}.csv', 'a')
+        f.write('time;setpoint;position;following_err;t_ms' + '\n')
+        f.close()
+        timeMs=0
+        OldTime=0
+
         while 1:
             try :
                 
@@ -254,9 +260,21 @@ class server():
 
                 if not data: 
                     break
-                
+
+                data = data.decode().split(';')
+
+                if OldTime==0:
+                    timeMs = 0
+                    OldTime = data[0]
+                else :
+                    timeMs = timeMs + data[0]-OldTime
+
+
+
+                FollErr = float(data[1]) - float(data[2])
+
                 f = open(f'{chemin}/{addr}_{dt_string}.csv','a')
-                f.write(data.decode()+'\n')
+                f.write(data.decode() + ';' + str(FollErr) + ';' + timeMs +'\n')
                 print (data.decode()+ "\r\n")
                 f.close()
             except Exception as err:
