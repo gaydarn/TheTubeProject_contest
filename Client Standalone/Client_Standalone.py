@@ -100,6 +100,7 @@ def bpStop_function():
     runContest = False
     stop_event.set()
 
+
 bpStop = customtkinter.CTkButton(master=app, text="Stop", command=bpStop_function)
 bpStop.place(relx=ctkCol_R, rely=0.7, anchor=customtkinter.CENTER)
 
@@ -180,7 +181,9 @@ def appContest(arduino_Auto, _stop_event,  ipAddr='127.0.0.1'):
         except socket.error as exc:
             print("Caught exception socket.error : %s" % exc)
 
-    client_socket.send(b'STOP')
+    if connected:
+        client_socket.send(b'STOP')
+        Util.write(arduino_Auto, 'quiet')
 
 #Méthode appelée à la pression sur le bouton start. En fonction des choix sur l'interface,
 # se connecte au serveur ou commence à envoyer la trajectoire sélectionnée.
