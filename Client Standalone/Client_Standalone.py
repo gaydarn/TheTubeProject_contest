@@ -85,8 +85,10 @@ def bpStart_function():
     print("Start pressed")
     bpStart.configure(state="disabled")
     runContest=True
-    MainAppStart()
+    ReadMainAppStartThread = threading.Thread(target=MainAppStart, daemon=True)
+    ReadMainAppStartThread.start()
     bpStart.configure(state="normal")
+
 
 bpStart = customtkinter.CTkButton(master=app, text="Start", command=bpStart_function)
 bpStart.place(relx=ctkCol_L, rely=0.7, anchor=customtkinter.CENTER)
